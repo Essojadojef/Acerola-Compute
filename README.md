@@ -1,3 +1,10 @@
+# Changes
+
+Changed pre-processor directives syntax to be more similar to GDscript annotations.
+In particular replaced `#kernel` and `[numthreads]` with `@kernel [numthreads]`.
+
+---
+
 # Acerola Compute
 
 Acerola Compute (ACompute for short) is a compute shader wrapper language for GLSL compute shaders intended for use with Godot to make compute shader organization, compilation, memory management, and dispatching much simpler.
