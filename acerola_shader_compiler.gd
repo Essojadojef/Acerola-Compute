@@ -79,19 +79,40 @@ func compile_compute_shader(compute_shader_file_path) -> void:
 
 	var raw_shader_code = raw_shader_code_string.split("\n")
 	
+	var line_counter : int = 0
 	var kernel_names = Array()
+	var kernel_to_thread_group_count = {}
 
 	# Strip out kernel names
-	while file.get_position() < file.get_length():
-		var line = file.get_line()
+	while line_counter < raw_shader_code.size():
+		var line = raw_shader_code[line_counter]
 
-		if line.begins_with("#kernel "):
-			var kernel_name = line.split("#kernel")[1].strip_edges()
+		if line.begins_with("@kernel "):
+			var kernel_declaration_line = raw_shader_code[line_counter + 1] # TODO: Check OOB
+			var kernel_name = kernel_declaration_line.trim_prefix("void").split("(")[0].strip_edges()
 			# print("Kernel Found: " + kernel_name)
 			kernel_names.push_back(kernel_name)
-			raw_shader_code.remove_at(0)
+			raw_shader_code.remove_at(line_counter)
+
+			# Extract thread groups
+			if line.contains('numthreads'):
+				var thread_groups = line.split('(')[-1].split(')')[0].split(',')
+				if thread_groups.size() != 3:
+					push_error("Failed to compile: " + compute_shader_file_path)
+					push_error("Reason: kernel thread group syntax error")
+					return
+
+				kernel_to_thread_group_count[kernel_name] = Array()
+				for n in thread_groups.size():
+					kernel_to_thread_group_count[kernel_name].push_back((thread_groups[n].strip_edges()))
+
+				# print(kernel_to_thread_group_count[kernel_name])
+			else:
+				push_error("Failed to compile: " + compute_shader_file_path)
+				push_error("Reason: kernel thread group count not found")
+				return
 		else:
-			break
+			line_counter += 1
 
 	# If no kernels defined at top of file, fail to compile
 	if kernel_names.size() == 0:
@@ -101,7 +122,7 @@ func compile_compute_shader(compute_shader_file_path) -> void:
 
 
 	# If no code after kernel definitions or if nothing in file at all, fail to compile
-	if file.get_position() >= file.get_length():
+	if raw_shader_code.size() == 0:
 		push_error("Failed to compile: " + compute_shader_file_path)
 		push_error("Reason: No shader code found")
 		return
@@ -113,35 +134,6 @@ func compile_compute_shader(compute_shader_file_path) -> void:
 			push_error("Failed to compile: " + compute_shader_file_path)
 			push_error("Reason: " + kernel_name + " kernel not found!")
 
-	var kernel_to_thread_group_count = {}
-
-	# Find kernels and extract thread groups
-	for i in raw_shader_code.size():
-		var line = raw_shader_code[i]
-
-		for kernel_name in kernel_names:
-			if line.contains(kernel_name) and line.contains('void'):
-				# print("Found kernel " + kernel_name  + " at line " + str(i + kernel_names.size() + 1))
-
-				# find thread group count by searching previous line of code from kernel function
-				var newLine = raw_shader_code[i - 1].strip_edges()
-				if newLine.contains('numthreads'):
-					var thread_groups = newLine.split('(')[-1].split(')')[0].split(',')
-					if thread_groups.size() != 3:
-						push_error("Failed to compile: " + compute_shader_file_path)
-						push_error("Reason: kernel thread group syntax error")
-
-					kernel_to_thread_group_count[kernel_name] = Array()
-					for n in thread_groups.size():
-						kernel_to_thread_group_count[kernel_name].push_back((thread_groups[n].strip_edges()))
-
-					raw_shader_code.set(i - 1, "")
-
-					# print(kernel_to_thread_group_count[kernel_name])
-				else:
-					push_error("Failed to compile: " + compute_shader_file_path)
-					push_error("Reason: kernel thread group count not found")
-					return
 
 	# Compile kernels
 	compute_shader_kernel_compilations[compute_shader_name] = Array()
