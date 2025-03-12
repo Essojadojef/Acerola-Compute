@@ -134,9 +134,12 @@ func compile_compute_shader(compute_shader_file_path) -> void:
 			push_error("Failed to compile: " + compute_shader_file_path)
 			push_error("Reason: " + kernel_name + " kernel not found!")
 
+	var result = compile_kernels(raw_shader_code, kernel_names, kernel_to_thread_group_count)
+	compute_shader_kernel_compilations[compute_shader_name] = result if result else []
 
+func compile_kernels(raw_shader_code, kernel_names, kernel_to_thread_group_count):
 	# Compile kernels
-	compute_shader_kernel_compilations[compute_shader_name] = Array()
+	var kernel_compilations = Array()
 	for kernel_name in kernel_names:
 		var shader_code = PackedStringArray(raw_shader_code)
 
@@ -161,7 +164,7 @@ func compile_compute_shader(compute_shader_file_path) -> void:
 
 		if shader_spirv.compile_error_compute != "":
 			push_error(shader_spirv.compile_error_compute)
-			push_error("In: " + shader_code_string)
+			#push_error("In: " + shader_code_string)
 			return
 			
 		print("- Compiling Kernel: " + kernel_name)
@@ -170,11 +173,12 @@ func compile_compute_shader(compute_shader_file_path) -> void:
 		if not shader_compilation.is_valid():
 			return
 
-		compute_shader_kernel_compilations[compute_shader_name].push_back(shader_compilation)
+		kernel_compilations.push_back(shader_compilation)
 
 		# print(shader_code_string)
 
 	# print("\n".join(raw_shader_code))
+	return kernel_compilations
 
 
 func _init() -> void:
@@ -223,6 +227,10 @@ func get_shader_compilation(shader_name: String) -> RID:
 	return shader_compilations[shader_name]
 
 func get_compute_kernel_compilation(shader_name, kernel_index):
+	if compute_shader_kernel_compilations[shader_name] == null:
+		return null
+	if compute_shader_kernel_compilations[shader_name].size() <= kernel_index:
+		return null
 	return compute_shader_kernel_compilations[shader_name][kernel_index]
 
 func get_compute_kernel_compilations(shader_name):

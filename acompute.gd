@@ -100,14 +100,22 @@ func _init(_shader_name: String) -> void:
 
 	shader_name = _shader_name
 
-	shader_id = AcerolaShaderCompiler.get_compute_kernel_compilation(shader_name, 0)
+	var result = AcerolaShaderCompiler.get_compute_kernel_compilation(shader_name, 0)
+	if result:
+		shader_id = result
 
-	for kernel in AcerolaShaderCompiler.get_compute_kernel_compilations(shader_name):
-		kernels.push_back(rd.compute_pipeline_create(kernel))
+	result = AcerolaShaderCompiler.get_compute_kernel_compilations(shader_name)
+	if result:
+		for kernel in result:
+			kernels.push_back(rd.compute_pipeline_create(kernel))
 
 
 func dispatch(kernel_index: int, x_groups: int, y_groups: int, z_groups: int) -> void:
-	var global_shader_id = AcerolaShaderCompiler.get_compute_kernel_compilation(shader_name, 0)
+	var result = AcerolaShaderCompiler.get_compute_kernel_compilation(shader_name, 0)
+	if !result:
+		return
+	
+	var global_shader_id: RID = result
 
 	# Recreate kernel pipelines if shader was recompiled
 	if shader_id != global_shader_id:

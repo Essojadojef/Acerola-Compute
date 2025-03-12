@@ -22,7 +22,7 @@ func _notification(what):
 		exposure_compute.free()
 
 
-func _render_callback(p_effect_callback_type, p_render_data):
+func _render_callback(p_effect_callback_type: int, p_render_data: RenderData):
 	if not enabled: return
 	if p_effect_callback_type != EFFECT_CALLBACK_TYPE_POST_TRANSPARENT: return
 	
